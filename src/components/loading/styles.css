@@ -1,0 +1,69 @@
+.loading-holder {
+  width: 20px;
+  height: 20px;
+}
+
+.loading-dot {
+  width: 21px;
+  height: 19px;
+  transform: rotate(45deg);
+  animation-name: css-rotate-loading;
+  animation-duration: 1.2s;
+  animation-iteration-count: infinite;
+  animation-timing-function: linear;
+}
+
+.dot-item {
+  width: 9px;
+  height: 9px;
+  background-color: #000;
+  border-radius: 50%;
+  display: inline-block;
+  margin-right: 2px;
+
+  position: absolute;
+  display: block;
+  background: #3d86ef;
+  border-radius: 100%;
+  transform: scale(0.75);
+  transform-origin: 50% 50%;
+  opacity: 0.3;
+  animation-name: css-move-loading;
+  animation-duration: 1s;
+  animation-iteration-count: infinite;
+  animation-timing-function: linear;
+  animation-direction: alternate;
+}
+
+.dot-item:nth-child(1) {
+  top: 0;
+  inset-inline-start: 0;
+  animation-delay: 0s;
+}
+.dot-item:nth-child(2) {
+  top: 0;
+  inset-inline-end: 0;
+  animation-delay: 0.4s;
+}
+.dot-item:nth-child(3) {
+  inset-inline-end: 0;
+  bottom: 0;
+  animation-delay: 0.8s;
+}
+.dot-item:nth-child(4) {
+  bottom: 0;
+  inset-inline-start: 0;
+  animation-delay: 1.2s;
+}
+
+@keyframes css-rotate-loading {
+  100% {
+    transform: rotate(405deg);
+  }
+}
+
+@keyframes css-move-loading {
+  100% {
+    opacity: 1;
+  }
+}

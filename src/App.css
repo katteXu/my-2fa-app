@@ -1,0 +1,4 @@
+circle {
+  -webkit-transition: stroke-dasharray 0.4s;
+  transition: stroke-dasharray 0.4s;
+}
