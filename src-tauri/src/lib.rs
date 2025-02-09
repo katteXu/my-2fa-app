@@ -5,7 +5,7 @@ use data::Data;
 use serde_json::json;
 use tauri::{
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
-    Manager,
+    AppHandle, Manager,
 };
 use tauri_plugin_autostart::{MacosLauncher, ManagerExt};
 use tauri_plugin_store::StoreExt;
@@ -51,6 +51,9 @@ async fn get_code(app: tauri::AppHandle) -> Result<Option<(String, u64)>, String
 pub fn run() {
     let app_state = AppState::new();
     tauri::Builder::default()
+        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+            let _ = show_window(app);
+        }))
         .plugin(tauri_plugin_autostart::init(
             MacosLauncher::LaunchAgent,
             Some(vec!["--flag1", "--flag2"]),
@@ -132,4 +135,15 @@ pub fn run() {
             },
             _ => {}
         })
+}
+
+fn show_window(app: &AppHandle) {
+    let windows = app.webview_windows();
+
+    windows
+        .values()
+        .next()
+        .expect("Sorry, no window found")
+        .set_focus()
+        .expect("Can't Bring Window to Focus");
 }
