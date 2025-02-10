@@ -1,4 +1,4 @@
-circle {
-  -webkit-transition: stroke-dasharray 0.4s;
-  transition: stroke-dasharray 0.4s;
+circle.loading {
+  -webkit-transition: stroke-dasharray 2s;
+  transition: stroke-dasharray 2s;
 }

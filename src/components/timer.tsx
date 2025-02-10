@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 type IProps = {
   width?: number;
@@ -7,6 +7,7 @@ type IProps = {
 };
 const Index: React.FC<IProps> = (props) => {
   const { width = 50, border = 5, time = 10 } = props;
+  const [animation, setAnimation] = useState(true);
   const round = width / 2;
 
   useEffect(() => {
@@ -22,6 +23,11 @@ const Index: React.FC<IProps> = (props) => {
         "stroke-dasharray",
         perimeter * percent + " " + perimeter * (1 - percent)
       );
+      if (time === 30) {
+        setAnimation(false);
+      } else if (time === 29) {
+        setAnimation(true);
+      }
     }
   };
   return (
@@ -39,6 +45,7 @@ const Index: React.FC<IProps> = (props) => {
           fill="none"
         ></circle>
         <circle
+          className={animation ? "loading" : ""}
           cx={round}
           cy={round}
           r={round - border / 2}
