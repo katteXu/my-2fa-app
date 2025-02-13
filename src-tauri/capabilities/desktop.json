@@ -9,6 +9,8 @@
     "main"
   ],
   "permissions": [
-    "autostart:default"
+    "autostart:default",
+    "shell:default",
+    "shell:allow-execute"
   ]
 }

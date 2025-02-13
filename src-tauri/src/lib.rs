@@ -13,6 +13,7 @@ use totp::TotpConfig;
 
 pub mod app_state;
 pub mod data;
+pub mod npt_client;
 pub mod totp;
 
 #[tauri::command]
@@ -51,6 +52,7 @@ async fn get_code(app: tauri::AppHandle) -> Result<Option<(String, u64)>, String
 pub fn run() {
     let app_state = AppState::new();
     tauri::Builder::default()
+        .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
             let _ = show_window(app);
         }))
@@ -115,6 +117,9 @@ pub fn run() {
             let state = app.state::<RwLock<AppState>>().clone();
             let mut state = state.write().unwrap();
             state.config = Some(config);
+
+            // 集成 ntpclient
+            npt_client::run(app.handle());
 
             Ok(())
         })
