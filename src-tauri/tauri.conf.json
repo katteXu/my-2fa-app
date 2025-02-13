@@ -53,8 +53,7 @@
       },
       "files": {},
       "hardenedRuntime": true,
-      "minimumSystemVersion": "10.13",
-      "signingIdentity": "B18A098290B0AF705DFD7CAB1E291E455A75819F"
+      "minimumSystemVersion": "10.13"
     }
   }
 }
