@@ -61,11 +61,14 @@ jobs:
           sparse-checkout: .
           persist-credentials: false
           clean: false
+          path: remote-repo
           # 显式指定分支避免API查询
           ref: main
 
       - name: Validate Rust Project
         run: |
+          echo "正在验证远程仓库结构..."
+          cd remote-repo  # 进入远程仓库目录
           echo "当前工作目录: $(pwd)"
           echo "目录结构:"
           ls -al
