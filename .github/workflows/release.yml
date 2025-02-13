@@ -66,10 +66,11 @@ jobs:
 
       - name: Validate Rust Project
         run: |
-          if [ ! -f Cargo.toml ]; then
-            echo "::error::This is not a Rust project (Cargo.toml missing)"
-            exit 1
-          fi
+          echo "当前工作目录: $(pwd)"
+          echo "目录结构:"
+          ls -al
+          echo "Cargo.toml 检查:"
+          test -f Cargo.toml || (echo "❌ Not a Rust project" && exit 1)
 
       - name: Setup Rust Toolchain
         uses: dtolnay/rust-toolchain@stable
