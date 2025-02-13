@@ -1,0 +1,188 @@
+name: "publish"
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      repository:
+        description: "Git Repository URL"
+        default: "https://github.com/katteXu/ntpclient.git"
+        required: false
+# This workflow will trigger on each push to the `release` branch to create or update a GitHub release, build your app, and upload the artifacts to the release.
+
+jobs:
+  cross-platform-build:
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # macOS
+          - platform: macos-latest
+            target: aarch64-apple-darwin
+            os_type: darwin
+          - platform: macos-latest
+            target: x86_64-apple-darwin
+            os_type: darwin
+
+          # Linux
+          - platform: ubuntu-22.04
+            target: x86_64-unknown-linux-gnu
+            os_type: linux
+          - platform: ubuntu-22.04
+            target: aarch64-unknown-linux-gnu
+            os_type: linux
+
+          # Windows
+          - platform: windows-latest
+            target: x86_64-pc-windows-msvc
+            os_type: windows
+          - platform: windows-latest
+            target: aarch64-pc-windows-msvc
+            os_type: windows
+
+    runs-on: ${{ matrix.platform }}
+    env:
+      BIN_NAME: ntpclient
+      TARGET_DIR: src-tauri/bin
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.event.inputs.repository || 'katteXu/ntpclient' }}
+          fetch-depth: 0
+
+      - name: Validate Rust Project
+        run: |
+          if [ ! -f Cargo.toml ]; then
+            echo "::error::This is not a Rust project (Cargo.toml missing)"
+            exit 1
+          fi
+
+      - name: Setup Rust Toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Install Cross-Compiler
+        run: |
+          case "${{ matrix.target }}" in
+            *linux*)
+              sudo apt-get update
+              # 安装交叉编译工具链
+              if [[ "${{ matrix.target }}" == aarch64-unknown-linux-gnu ]]; then
+                sudo apt-get install -y gcc-aarch64-linux-gnu
+              fi
+              ;;
+            *windows*)
+              # Windows ARM64需要特定的VC工具链
+              if [[ "${{ matrix.target }}" == aarch64-pc-windows-msvc ]]; then
+                echo "Installing ARM64 Windows SDK..."
+                choco install -y visualstudio2022-workload-vctools --params "--add Microsoft.VisualStudio.Component.VC.Tools.ARM64"
+              fi
+              ;;
+          esac
+
+      - name: Add Target
+        run: rustup target add ${{ matrix.target }}
+
+      - name: Build Release
+        run: cargo build --release --target ${{ matrix.target }}
+
+      - name: Prepare Output Directory
+        run: mkdir -p ${{ env.TARGET_DIR }}
+
+      - name: Process Artifacts
+        shell: bash
+        run: |
+          # 处理不同平台的文件扩展名
+          case "${{ matrix.os_type }}" in
+            windows)
+              ext=".exe"
+              src_path="target/${{ matrix.target }}/release/${BIN_NAME}${ext}"
+              ;;
+            *)
+              ext=""
+              src_path="target/${{ matrix.target }}/release/${BIN_NAME}"
+              ;;
+          esac
+
+          dest_name="${BIN_NAME}-${{ matrix.target }}${ext}"
+
+          # 特殊处理macOS架构命名
+          if [[ "${{ matrix.target }}" == *apple-darwin ]]; then
+            dest_name="${BIN_NAME}-${{ matrix.target }}${ext}"
+          fi
+
+          echo "Moving ${src_path} to ${TARGET_DIR}/${dest_name}"
+          cp "${src_path}" "${TARGET_DIR}/${dest_name}"
+
+          # 生成SHA256校验文件
+          shasum -a 256 "${TARGET_DIR}/${dest_name}" > "${TARGET_DIR}/${dest_name}.sha256"
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: binaries-${{ matrix.target }}
+          path: ${{ env.TARGET_DIR }}
+  publish-tauri:
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: "macos-latest" # for Arm based macs (M1 and above).
+            args: "--target aarch64-apple-darwin"
+          - platform: "macos-latest" # for Intel based macs.
+            args: "--target x86_64-apple-darwin"
+          - platform: "ubuntu-22.04" # for Tauri v1 you could replace this with ubuntu-20.04.
+            args: ""
+          - platform: "windows-latest"
+            args: ""
+
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: setup node
+        uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+
+      - name: install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          # Those targets are only used on macos runners so it's in an `if` to slightly speed up windows and linux builds.
+          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+
+      - name: install dependencies (ubuntu only)
+        if: matrix.platform == 'ubuntu-22.04' # This must match the platform value defined above.
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.0-dev libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+        # webkitgtk 4.0 is for Tauri v1 - webkitgtk 4.1 is for Tauri v2.
+        # You can remove the one that doesn't apply to your app to speed up the workflow a bit.
+
+      - name: install frontend dependencies
+        run: yarn install # change this to npm, pnpm or bun depending on which one you use.
+      - name: install bun
+        run: yarn add bun -g
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+        with:
+          tagName: app-v__VERSION__ # the action automatically replaces \_\_VERSION\_\_ with the app version.
+          releaseName: "App v__VERSION__"
+          releaseBody: "See the assets to download this version and install."
+          releaseDraft: true
+          prerelease: true
+          args: ${{ matrix.args }}
