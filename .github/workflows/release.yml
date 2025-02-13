@@ -126,7 +126,7 @@ jobs:
           shasum -a 256 "${TARGET_DIR}/${dest_name}" > "${TARGET_DIR}/${dest_name}.sha256"
 
       - name: Upload Artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: binaries-${{ matrix.target }}
           path: ${{ env.TARGET_DIR }}
