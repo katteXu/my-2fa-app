@@ -9,7 +9,7 @@ on:
     inputs:
       repository:
         description: "Git Repository URL"
-        default: "https://github.com/katteXu/ntpclient.git"
+        default: "katteXu/ntpclient"
         required: false
 # This workflow will trigger on each push to the `release` branch to create or update a GitHub release, build your app, and upload the artifacts to the release.
 
