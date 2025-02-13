@@ -26,9 +26,6 @@
     }
   },
   "bundle": {
-    "externalBin": [
-      "bin/ntpclient"
-    ],
     "active": true,
     "targets": "all",
     "icon": [
