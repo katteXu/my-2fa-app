@@ -131,6 +131,7 @@ jobs:
           name: binaries-${{ matrix.target }}
           path: ${{ env.TARGET_DIR }}
   publish-tauri:
+    needs: cross-platform-build
     permissions:
       contents: write
     strategy:
