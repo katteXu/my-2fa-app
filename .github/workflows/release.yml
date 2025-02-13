@@ -54,8 +54,15 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
         with:
-          repository: ${{ github.event.inputs.repository || 'katteXu/ntpclient' }}
-          fetch-depth: 0
+          repository: ${{ inputs.repo }}
+          token: ${{ secrets.PROJECT_ACCESS_TOKEN }}
+          # 关键修复参数
+          fetch-depth: 1
+          sparse-checkout: .
+          persist-credentials: false
+          clean: false
+          # 显式指定分支避免API查询
+          ref: main
 
       - name: Validate Rust Project
         run: |
