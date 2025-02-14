@@ -2,9 +2,9 @@ name: "with ntpclient release"
 
 on:
   push:
-    branches: [main]
+    branches: [main-old]
   pull_request:
-    branches: [main]
+    branches: [main-old]
 
 jobs:
   cross-platform-build:
