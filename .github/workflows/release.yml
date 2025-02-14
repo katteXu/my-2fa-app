@@ -1,126 +1,73 @@
-name: "publish"
+name: "with ntpclient release"
 
 on:
-  workflow_dispatch:
-    inputs:
-      repo_url:
-        description: "Git Repository URL (format: owner/repo)"
-        default: "katteXu/ntpclient"
-        required: false
-      branch:
-        description: "Target branch name"
-        default: "main"
-        required: false
-
-env:
-  CLONE_DIR: "remote-repo"
-  BIN_NAME: "ntpclient"
-  TARGET_DIR: "src-tauri/bin"
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
 
 jobs:
-  clone-and-validate:
-    runs-on: ubuntu-latest
-    outputs:
-      repo_path: ${{ env.CLONE_DIR }}
-    steps:
-      - name: Clone Repository
-        uses: actions/checkout@v4
-        with:
-          repository: ${{ github.event.inputs.repo_url || 'katteXu/ntpclient' }}
-          path: ${{ env.CLONE_DIR }}
-          ref: ${{ inputs.branch }}
-          token: ${{ secrets.REPO_ACCESS_TOKEN }}
-          fetch-depth: 1
-
-      - name: Validate Rust Project
-        run: |
-          cd ${{ env.CLONE_DIR }}
-          if [ ! -f Cargo.toml ]; then
-            echo "::error::Missing Cargo.toml in cloned repository"
-            exit 1
-          fi
-          echo "Cargo.toml content hash: $(sha256sum Cargo.toml | cut -c1-8)"
-
   cross-platform-build:
     needs: clone-and-validate
+    # 配置矩阵平台
     strategy:
       fail-fast: false
       matrix:
         include:
           - platform: macos-latest
             target: aarch64-apple-darwin
+            ext: ""
           - platform: macos-latest
             target: x86_64-apple-darwin
+            ext: ""
           - platform: ubuntu-22.04
             target: x86_64-unknown-linux-gnu
+            ext: ""
           - platform: ubuntu-22.04
             target: aarch64-unknown-linux-gnu
+            ext: ""
           - platform: windows-latest
             target: x86_64-pc-windows-msvc
+            ext: ".exe"
           - platform: windows-latest
             target: aarch64-pc-windows-msvc
+            ext: ".exe"
 
     runs-on: ${{ matrix.platform }}
-    env:
-      BUILD_DIR: ${{ needs.clone-and-validate.outputs.repo_path }}
 
     steps:
-      - name: Setup Environment
-        shell: bash
-        run: |
-          echo "Cloned repository path: ${{ env.BUILD_DIR }}"
-          ls -l ${{ env.BUILD_DIR }}
-
-      - name: Install Rust Toolchain
-        uses: dtolnay/rust-toolchain@stable
+      # 拉取子仓库
+      - name: Checkout repository and submodules
+        uses: actions/checkout@v4
         with:
-          targets: ${{ matrix.target }}
+          submodules: recursive
 
-      - name: Install Cross-Dependencies
-        shell: bash
-        run: |
-          case "${{ matrix.target }}" in
-            *linux*)
-              sudo apt-get update
-              sudo apt-get install -y gcc-aarch64-linux-gnu libwebkit2gtk-4.1-dev
-              ;;
-            *windows*)
-              if [[ "${{ matrix.target }}" == *aarch64* ]]; then
-                choco install -y visualstudio2022-workload-vctools --params "--add Microsoft.VisualStudio.Component.VC.Tools.ARM64"
-              fi
-              ;;
-          esac
+      # 配置Rust环境
+      - name: Setup Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          target: ${{ matrix.target }}
+          override: true
 
-      - name: Build Release
-        working-directory: ${{ env.BUILD_DIR }}
+      # 构建应用
+      - name: Build binary
         run: |
-          rustup target add ${{ matrix.target }}
+          cd ntpclient
           cargo build --release --target ${{ matrix.target }}
 
-      - name: Process Artifacts
-        working-directory: ${{ env.BUILD_DIR }}
-        shell: bash
+      # 保存产物
+      - name: Rename and move binary
         run: |
-          EXT=""
-          if [[ "${{ matrix.target }}" == *windows* ]]; then
-            EXT=".exe"
-          fi
+          cd ntpclient
+          binary_name="ntpclient${{ matrix.ext }}"
+          target_binary="ntpclient-${{ matrix.target }}${{ matrix.ext }}"
 
-          SRC_PATH="target/${{ matrix.target }}/release/$BIN_NAME$EXT"
-          DEST_NAME="$BIN_NAME-${{ matrix.target }}$EXT"
+          cp "target/${{ matrix.target }}/release/$binary_name" "../src-tauri/bin/$target_binary"
 
-          mkdir -p ${{ env.TARGET_DIR }}
-          cp "$SRC_PATH" "${{ env.TARGET_DIR }}/$DEST_NAME"
-          echo "Artifact: $DEST_NAME" >> $GITHUB_STEP_SUMMARY
-
-          # Generate checksum
-          shasum -a 256 "${{ env.TARGET_DIR }}/$DEST_NAME" > "${{ env.TARGET_DIR }}/$DEST_NAME.sha256"
-
-      - name: Upload Artifacts
-        uses: actions/upload-artifact@v3
-        with:
-          name: binaries-${{ matrix.target }}
-          path: ${{ env.TARGET_DIR }}/*
+      - name: Verify artifactis
+        run: |
+          ls -lh src-tauri/bin/
 
   publish-tauri:
     needs: cross-platform-build
