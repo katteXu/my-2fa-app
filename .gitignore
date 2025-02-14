@@ -25,3 +25,4 @@ dist-ssr
 
 .certificate/*
 src-tauri/bin/*
+.scripts/*
