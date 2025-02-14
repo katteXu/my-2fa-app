@@ -15,16 +15,18 @@ release_info=$(curl -s "https://api.github.com/repos/$owner/$repo/releases/lates
 # 提取 assets 信息
 assets=$(echo "$release_info" | jq -c '.assets[]')
 
-echo $assets
 # 遍历 assets 并下载
 while read -r asset; do
     asset_name=$(echo "$asset" | jq -r '.name')
     asset_url=$(echo "$asset" | jq -r '.browser_download_url')
-    echo "Downloading $asset_name..."
-    curl -L -o "$save_path/$asset_name" "$asset_url"
-    if [ $? -eq 0 ]; then
-        echo "$asset_name downloaded successfully."
+    echo -e "\033[32m Downloading \033[0m$asset_name..."
+    curl -s -L -o "$save_path/$asset_name" "$asset_url"
+    if [ $? -eq 0 ]; then 
+        echo -e "\033[33m $asset_name \033[0m downloaded successfully."
     else
         echo "Failed to download $asset_name."
     fi
 done <<< "$assets"
+
+cd src-tauri/bin
+chmod +x ntpclient*
