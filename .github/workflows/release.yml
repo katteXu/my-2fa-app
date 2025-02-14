@@ -8,7 +8,6 @@ on:
 
 jobs:
   cross-platform-build:
-    needs: clone-and-validate
     # 配置矩阵平台
     strategy:
       fail-fast: false
